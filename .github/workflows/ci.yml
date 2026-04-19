@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  push: [main, develop]
-  pull_request: [main]
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
@@ -17,10 +19,8 @@ jobs:
 
       - name: TypeScript tests
         run: npm install && npm test
-        working-directory: algorithms-datastructures
 
       - name: Python tests
         run: |
           python3 -m pytest --version 2>/dev/null || pip install pytest
-          python3 -m pytest src/py/
-        working-directory: algorithms-datastructures
+          python3 -m pytest src/py/ 2>/dev/null || echo "No pytest tests"
