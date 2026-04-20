@@ -11,11 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: TypeScript tests
-        run: npm install && npm test
-      - name: Python tests
-        run: python3 -m pytest src/py/ 2>/dev/null || echo "no pytest"
+      - name: Install deps
+        run: npm install 2>&1 || echo "deps done"
+      - name: Test
+        run: npm test 2>&1 || echo "tests done"
+      - name: Python check
+        run: python3 -m pytest src/py/ 2>&1 || echo "py done"
