@@ -1,24 +1,61 @@
 # algorithms-datastructures
 
-> Curated algorithms & data structures library | TypeScript, Python, Go, Rust | LeetCode patterns, competitive programming
+A compact algorithms and data-structures reference implemented in **TypeScript and Python**.
 
-## Topics
+This repository is retained as supporting engineering work. The documentation intentionally describes only implementations that exist in the current source tree.
 
-| Category | Algorithms | Difficulty |
-|----------|-----------|------------|
-| Sorting | QuickSort, MergeSort, HeapSort | Medium |
-| Searching | Binary, BFS, DFS, Dijkstra | Easy |
-| Dynamic Programming | Knapsack, LCS, LIS | Hard |
-| Trees | BST, AVL, Trie | Medium |
-| Graphs | Union-Find, Topological Sort | Medium |
+## Current contents
 
-## Languages
+### TypeScript
 
-- TypeScript — src/ts/
-- Python — src/py/
-- Go — src/go/
-- Rust — src/rs/
+`src/ts/` currently contains:
 
-## License
+- Graph implementations and traversal-related logic
+- Tree data-structure implementations
+- Sorting tests
 
-MIT
+### Python
+
+`src/py/` currently contains:
+
+- Graph algorithms/data structures
+- Sorting implementations
+
+## Repository layout
+
+```text
+algorithms-datastructures/
+├── src/
+│   ├── py/
+│   │   ├── graph.py
+│   │   └── sorting.py
+│   └── ts/
+│       ├── graph.ts
+│       ├── sorting.test.ts
+│       └── tree.ts
+├── package.json
+├── tsconfig.json
+└── .github/workflows/ci.yml
+```
+
+## Validation
+
+TypeScript:
+
+```bash
+npm install
+npm run typecheck
+npm test
+```
+
+Python source is syntax-checked in CI with `compileall`.
+
+## Scope boundaries
+
+Earlier documentation claimed Go and Rust implementations plus algorithm families that are not present in the repository. Those claims have been removed.
+
+The current repository should be read as a small educational/reference codebase, not as a comprehensive competitive-programming library or a Forex-specific flagship project.
+
+## Portfolio role
+
+The repository demonstrates foundational implementation work relevant to data structures, algorithms, and general engineering. It remains secondary to the account's FX/quantitative systems work.
