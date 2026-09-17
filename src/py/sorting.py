@@ -1,12 +1,18 @@
-"""Sorting and search algorithms in Python"""
-from typing import TypeVar, List, Callable, Any
+"""Sorting and search algorithms in Python."""
 
-T = TypeVar('T')
+from typing import Callable, List, TypeVar
+
+T = TypeVar("T")
+Comparator = Callable[[T, T], int]
 
 
-def quick_sort(arr: List[T], cmp: Callable[[T, T], int] = lambda a, b: (a > b) - (a < b)) -> List[T]:
+def _default_compare(a: T, b: T) -> int:
+    return (a > b) - (a < b)
+
+
+def quick_sort(arr: List[T], cmp: Comparator[T] = _default_compare) -> List[T]:
     if len(arr) <= 1:
-        return arr
+        return arr[:]
     pivot = arr[len(arr) // 2]
     return (
         quick_sort([x for x in arr if cmp(x, pivot) < 0], cmp)
@@ -15,17 +21,18 @@ def quick_sort(arr: List[T], cmp: Callable[[T, T], int] = lambda a, b: (a > b) -
     )
 
 
-def merge_sort(arr: List[T], cmp: Callable[[T, T], int] = lambda a, b: (a > b) - (a < b)) -> List[T]:
+def merge_sort(arr: List[T], cmp: Comparator[T] = _default_compare) -> List[T]:
     if len(arr) <= 1:
-        return arr
+        return arr[:]
     mid = len(arr) // 2
     left = merge_sort(arr[:mid], cmp)
     right = merge_sort(arr[mid:], cmp)
     return _merge(left, right, cmp)
 
 
-def _merge(left: List[T], right: List[T], cmp: Callable[[T, T], int]) -> List[T]:
-    result, i, j = [], 0, 0
+def _merge(left: List[T], right: List[T], cmp: Comparator[T]) -> List[T]:
+    result: List[T] = []
+    i, j = 0, 0
     while i < len(left) and j < len(right):
         if cmp(left[i], right[j]) <= 0:
             result.append(left[i])
@@ -36,69 +43,69 @@ def _merge(left: List[T], right: List[T], cmp: Callable[[T, T], int]) -> List[T]
     return result + left[i:] + right[j:]
 
 
-def heap_sort(arr: List[T], cmp: Callable[[T, T], int] = lambda a, b: (a > b) - (a < b)) -> List[T]:
-    a, n = arr[:], len(arr)
+def heap_sort(arr: List[T], cmp: Comparator[T] = _default_compare) -> List[T]:
+    values, n = arr[:], len(arr)
 
-    def heapify(k: int, size: int):
-        largest = k
-        l, r = 2 * k + 1, 2 * k + 2
-        if l < size and cmp(a[l], a[largest]) > 0:
-            largest = l
-        if r < size and cmp(a[r], a[largest]) > 0:
-            largest = r
-        if largest != k:
-            a[k], a[largest] = a[largest], a[k]
+    def heapify(root: int, size: int) -> None:
+        largest = root
+        left, right = 2 * root + 1, 2 * root + 2
+        if left < size and cmp(values[left], values[largest]) > 0:
+            largest = left
+        if right < size and cmp(values[right], values[largest]) > 0:
+            largest = right
+        if largest != root:
+            values[root], values[largest] = values[largest], values[root]
             heapify(largest, size)
 
     for i in range(n // 2 - 1, -1, -1):
         heapify(i, n)
     for i in range(n - 1, 0, -1):
-        a[0], a[i] = a[i], a[0]
+        values[0], values[i] = values[i], values[0]
         heapify(0, i)
-    return a
+    return values
 
 
-def binary_search(arr: List[T], target: T, cmp: Callable[[T, T], int] = lambda a, b: (a > b) - (a < b)) -> int:
-    lo, hi = 0, len(arr) - 1
-    while lo <= hi:
-        mid = (lo + hi) // 2
-        c = cmp(arr[mid], target)
-        if c == 0:
+def binary_search(
+    arr: List[T], target: T, cmp: Comparator[T] = _default_compare
+) -> int:
+    low, high = 0, len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        comparison = cmp(arr[mid], target)
+        if comparison == 0:
             return mid
-        lo = mid + 1 if c < 0 else lo
-        hi = mid - 1 if c > 0 else hi
+        if comparison < 0:
+            low = mid + 1
+        else:
+            high = mid - 1
     return -1
 
 
 def counting_sort(arr: List[int]) -> List[int]:
+    """Sort integers, including negative values, without mutating the input."""
     if not arr:
         return []
-    max_val = max(arr)
-    count = [0] * (max_val + 1)
-    for v in arr:
-        count[v] += 1
-    result = []
-    for v, c in enumerate(count):
-        result.extend([v] * c)
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in arr):
+        raise TypeError("counting_sort accepts integers only")
+
+    min_value = min(arr)
+    max_value = max(arr)
+    counts = [0] * (max_value - min_value + 1)
+
+    for value in arr:
+        counts[value - min_value] += 1
+
+    result: List[int] = []
+    for offset, count in enumerate(counts):
+        result.extend([offset + min_value] * count)
     return result
 
 
 def two_sum(nums: List[int], target: int) -> List[int]:
-    seen = {}
-    for i, num in enumerate(nums):
+    seen: dict[int, int] = {}
+    for index, num in enumerate(nums):
         complement = target - num
         if complement in seen:
-            return [seen[complement], i]
-        seen[num] = i
+            return [seen[complement], index]
+        seen[num] = index
     return []
-
-
-if __name__ == "__main__":
-    nums = [5, 2, 8, 1, 9, 3, 7, 4, 6]
-    print("Original:", nums)
-    print("QuickSort:", quick_sort(nums[:]))
-    print("MergeSort:", merge_sort(nums[:]))
-    print("HeapSort:", heap_sort(nums[:]))
-    print("CountingSort:", counting_sort([3, 1, 4, 1, 5, 9, 2, 6]))
-    print("BinarySearch 7:", binary_search(heap_sort(nums[:]), 7))
-    print("TwoSum [2,7,11,15] target=9:", two_sum([2, 7, 11, 15], 9))
