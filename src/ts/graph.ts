@@ -29,12 +29,14 @@ export class AdjacencyList implements Graph {
     const visited = new Set<number>();
     const result: number[] = [];
     const queue: number[] = [start];
+    let head = 0;
     visited.add(start);
 
-    while (queue.length) {
-      const v = queue.shift()!;
+    while (head < queue.length) {
+      const v = queue[head];
+      head += 1;
       result.push(v);
-      for (const neighbor of this.adj.get(v) || []) {
+      for (const neighbor of this.adj.get(v) ?? []) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor);
           queue.push(neighbor);
@@ -48,10 +50,10 @@ export class AdjacencyList implements Graph {
     const visited = new Set<number>();
     const result: number[] = [];
 
-    const dfsRecursive = (v: number) => {
+    const dfsRecursive = (v: number): void => {
       visited.add(v);
       result.push(v);
-      for (const neighbor of this.adj.get(v) || []) {
+      for (const neighbor of this.adj.get(v) ?? []) {
         if (!visited.has(neighbor)) dfsRecursive(neighbor);
       }
     };
@@ -61,22 +63,31 @@ export class AdjacencyList implements Graph {
   }
 
   topologicalSort(): number[] {
-    const visited = new Set<number>();
-    const stack: number[] = [];
+    const state = new Map<number, "visiting" | "visited">();
+    const result: number[] = [];
 
-    const dfs = (v: number) => {
-      visited.add(v);
-      for (const neighbor of this.adj.get(v) || []) {
-        if (!visited.has(neighbor)) dfs(neighbor);
+    const visit = (v: number): void => {
+      const currentState = state.get(v);
+      if (currentState === "visiting") {
+        throw new Error("graph contains a cycle");
       }
-      stack.push(v);
+      if (currentState === "visited") {
+        return;
+      }
+
+      state.set(v, "visiting");
+      for (const neighbor of this.adj.get(v) ?? []) {
+        visit(neighbor);
+      }
+      state.set(v, "visited");
+      result.push(v);
     };
 
     for (const v of this.adj.keys()) {
-      if (!visited.has(v)) dfs(v);
+      visit(v);
     }
 
-    return stack.reverse();
+    return result.reverse();
   }
 }
 
@@ -85,21 +96,36 @@ export class UnionFind {
   private rank: number[];
 
   constructor(n: number) {
+    if (!Number.isInteger(n) || n < 0) {
+      throw new RangeError("n must be a non-negative integer");
+    }
     this.parent = Array.from({ length: n }, (_, i) => i);
     this.rank = new Array(n).fill(0);
   }
 
+  private assertIndex(x: number): void {
+    if (!Number.isInteger(x) || x < 0 || x >= this.parent.length) {
+      throw new RangeError(`index out of range: ${x}`);
+    }
+  }
+
   find(x: number): number {
+    this.assertIndex(x);
     if (this.parent[x] !== x) this.parent[x] = this.find(this.parent[x]);
     return this.parent[x];
   }
 
   union(x: number, y: number): boolean {
-    const px = this.find(x), py = this.find(y);
+    const px = this.find(x);
+    const py = this.find(y);
     if (px === py) return false;
+
     if (this.rank[px] < this.rank[py]) this.parent[px] = py;
     else if (this.rank[px] > this.rank[py]) this.parent[py] = px;
-    else { this.parent[py] = px; this.rank[px]++; }
+    else {
+      this.parent[py] = px;
+      this.rank[px] += 1;
+    }
     return true;
   }
 
@@ -108,37 +134,53 @@ export class UnionFind {
   }
 }
 
-export function dijkstra(graph: number[][], src: number): number[] {
+function validateAdjacencyMatrix(graph: readonly (readonly number[])[]): void {
+  if (graph.length === 0) {
+    throw new Error("graph must be a non-empty square adjacency matrix");
+  }
+
   const n = graph.length;
-  const dist = new Array(n).fill(Infinity);
-  dist[src] = 0;
-  const visited = new Set<number>();
-
-  for (let i = 0; i < n; i++) {
-    let u = -1;
-    for (let j = 0; j < n; j++) {
-      if (!visited.has(j) && (u === -1 || dist[j] < dist[u])) u = j;
+  for (const row of graph) {
+    if (row.length !== n) {
+      throw new Error("graph must be a square adjacency matrix");
     }
-    if (dist[u] === Infinity) break;
-    visited.add(u);
-
-    for (let v = 0; v < n; v++) {
-      if (graph[u][v] && dist[u] + graph[u][v] < dist[v]) {
-        dist[v] = dist[u] + graph[u][v];
+    for (const weight of row) {
+      if (!Number.isFinite(weight) || weight < 0) {
+        throw new Error("graph weights must be finite and non-negative");
       }
     }
   }
-  return dist;
 }
 
-// Tests
-const g = new AdjacencyList();
-[[0, 1], [0, 2], [1, 3], [1, 4], [2, 4]].forEach(([v, w]) => g.addEdge(v, w));
-console.log('BFS:', g.bfs(0));
-console.log('DFS:', g.dfs(0));
+export function dijkstra(graph: readonly (readonly number[])[], src: number): number[] {
+  validateAdjacencyMatrix(graph);
+  const n = graph.length;
 
-const uf = new UnionFind(5);
-uf.union(0, 2);
-uf.union(1, 3);
-console.log('UnionFind connected(0,2):', uf.connected(0, 2));
-console.log('UnionFind connected(0,3):', uf.connected(0, 3));
+  if (!Number.isInteger(src) || src < 0 || src >= n) {
+    throw new RangeError(`source index out of range: ${src}`);
+  }
+
+  const dist = new Array<number>(n).fill(Infinity);
+  dist[src] = 0;
+  const visited = new Set<number>();
+
+  for (let i = 0; i < n; i += 1) {
+    let u = -1;
+    for (let j = 0; j < n; j += 1) {
+      if (!visited.has(j) && (u === -1 || dist[j] < dist[u])) u = j;
+    }
+
+    if (u === -1 || dist[u] === Infinity) break;
+    visited.add(u);
+
+    for (let v = 0; v < n; v += 1) {
+      const weight = graph[u][v];
+      // This matrix representation uses zero to mean "no edge".
+      if (weight !== 0 && dist[u] + weight < dist[v]) {
+        dist[v] = dist[u] + weight;
+      }
+    }
+  }
+
+  return dist;
+}

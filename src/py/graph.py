@@ -1,25 +1,31 @@
-"""Graph algorithms in Python"""
+"""Graph algorithms in Python."""
+
 from collections import defaultdict, deque
-from typing import Dict, List, Set, Optional
+import math
+from typing import Dict, List, Set
 
 
 class Graph:
-    def __init__(self):
+    def __init__(self) -> None:
         self.adj: Dict[int, List[int]] = defaultdict(list)
 
+    def add_vertex(self, v: int) -> None:
+        self.adj.setdefault(v, [])
+
     def add_edge(self, v: int, w: int) -> None:
+        self.add_vertex(v)
+        self.add_vertex(w)
         self.adj[v].append(w)
 
     def bfs(self, start: int) -> List[int]:
-        visited: Set[int] = set()
+        visited: Set[int] = {start}
         result: List[int] = []
         queue = deque([start])
-        visited.add(start)
 
         while queue:
             v = queue.popleft()
             result.append(v)
-            for neighbor in self.adj[v]:
+            for neighbor in self.adj.get(v, []):
                 if neighbor not in visited:
                     visited.add(neighbor)
                     queue.append(neighbor)
@@ -32,7 +38,7 @@ class Graph:
         def dfs_rec(v: int) -> None:
             visited.add(v)
             result.append(v)
-            for neighbor in self.adj[v]:
+            for neighbor in self.adj.get(v, []):
                 if neighbor not in visited:
                     dfs_rec(neighbor)
 
@@ -40,28 +46,44 @@ class Graph:
         return result
 
     def topological_sort(self) -> List[int]:
-        visited: Set[int] = set()
-        stack: List[int] = []
+        state: Dict[int, int] = {}
+        result: List[int] = []
 
-        def dfs(v: int) -> None:
-            visited.add(v)
-            for neighbor in self.adj[v]:
-                if neighbor not in visited:
-                    dfs(neighbor)
-            stack.append(v)
+        def visit(v: int) -> None:
+            current_state = state.get(v, 0)
+            if current_state == 1:
+                raise ValueError("graph contains a cycle")
+            if current_state == 2:
+                return
 
-        for v in self.adj:
-            if v not in visited:
-                dfs(v)
-        return stack[::-1]
+            state[v] = 1
+            for neighbor in self.adj.get(v, []):
+                visit(neighbor)
+            state[v] = 2
+            result.append(v)
+
+        # Snapshot the keys so traversal can never invalidate the iteration even
+        # if a caller populated the defaultdict directly.
+        for v in list(self.adj):
+            visit(v)
+
+        result.reverse()
+        return result
 
 
 class UnionFind:
-    def __init__(self, n: int):
+    def __init__(self, n: int) -> None:
+        if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+            raise ValueError("n must be a non-negative integer")
         self.parent = list(range(n))
         self.rank = [0] * n
 
+    def _validate_index(self, x: int) -> None:
+        if not isinstance(x, int) or isinstance(x, bool) or not 0 <= x < len(self.parent):
+            raise IndexError(f"index out of range: {x}")
+
     def find(self, x: int) -> int:
+        self._validate_index(x)
         if self.parent[x] != x:
             self.parent[x] = self.find(self.parent[x])
         return self.parent[x]
@@ -83,9 +105,29 @@ class UnionFind:
         return self.find(x) == self.find(y)
 
 
-def dijkstra(graph: List[List[int]], src: int) -> List[int]:
+def _validate_adjacency_matrix(graph: List[List[float]]) -> None:
+    if not graph:
+        raise ValueError("graph must be a non-empty square adjacency matrix")
+
     n = len(graph)
-    dist = [float('inf')] * n
+    for row in graph:
+        if len(row) != n:
+            raise ValueError("graph must be a square adjacency matrix")
+        for weight in row:
+            if isinstance(weight, bool) or not isinstance(weight, (int, float)):
+                raise ValueError("graph weights must be numeric")
+            if not math.isfinite(weight) or weight < 0:
+                raise ValueError("graph weights must be finite and non-negative")
+
+
+def dijkstra(graph: List[List[float]], src: int) -> List[float]:
+    _validate_adjacency_matrix(graph)
+    n = len(graph)
+
+    if not isinstance(src, int) or isinstance(src, bool) or not 0 <= src < n:
+        raise IndexError(f"source index out of range: {src}")
+
+    dist = [float("inf")] * n
     dist[src] = 0
     visited: Set[int] = set()
 
@@ -94,25 +136,15 @@ def dijkstra(graph: List[List[int]], src: int) -> List[int]:
         for v in range(n):
             if v not in visited and (u == -1 or dist[v] < dist[u]):
                 u = v
-        if dist[u] == float('inf'):
+
+        if u == -1 or dist[u] == float("inf"):
             break
+
         visited.add(u)
         for v in range(n):
-            if graph[u][v] and dist[u] + graph[u][v] < dist[v]:
-                dist[v] = dist[u] + graph[u][v]
+            weight = graph[u][v]
+            # This matrix representation uses zero to mean "no edge".
+            if weight != 0 and dist[u] + weight < dist[v]:
+                dist[v] = dist[u] + weight
+
     return dist
-
-
-if __name__ == "__main__":
-    g = Graph()
-    for v, w in [(0, 1), (0, 2), (1, 3), (1, 4), (2, 4)]:
-        g.add_edge(v, w)
-    print("BFS:", g.bfs(0))
-    print("DFS:", g.dfs(0))
-    print("TopoSort:", g.topological_sort())
-
-    uf = UnionFind(5)
-    uf.union(0, 2)
-    uf.union(1, 3)
-    print("UnionFind connected(0,2):", uf.connected(0, 2))
-    print("UnionFind connected(0,3):", uf.connected(0, 3))
